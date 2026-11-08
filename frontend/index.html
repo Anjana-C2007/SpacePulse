@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Sensor Dashboard</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; margin-top: 60px; }
+    #value { font-size: 72px; }
+    #log { margin-top: 20px; color: gray; }
+  </style>
+</head>
+<body>
+  <h2>Heart Rate</h2>
+  <div id="value">--</div>
+  <div id="log"></div>
+
+  <script>
+    const ws = new WebSocket("ws://localhost:8080");
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      document.getElementById("value").textContent = data.value + " bpm";
+      document.getElementById("log").textContent =
+        "Last update: " + new Date(data.timestamp).toLocaleTimeString();
+    };
+  </script>
+</body>
+</html>
