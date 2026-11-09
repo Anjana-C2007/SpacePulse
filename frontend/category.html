@@ -58,19 +58,14 @@
         { key: "diastolic", label: "Blood Pressure (Dia)", unit: "mmHg", min: 60, max: 90 },
         { key: "respRate", label: "Respiratory Rate", unit: "/min", min: 12, max: 20 },
       ]},
-      environment: { title: "Environment", vitals: [
-        { key: "cabinTemp", label: "Cabin Temperature", unit: "°C", min: 18, max: 27 },
-        { key: "humidity", label: "Humidity", unit: "%", min: 30, max: 65 },
-        { key: "co2", label: "CO2 Level", unit: "%", min: 0, max: 0.8 },
-        { key: "cabinPressure", label: "Cabin Pressure", unit: "kPa", min: 99, max: 104 },
+             environment: { title: "Environment", vitals: [
+        { key: "co2", label: "Cabin CO2 Level", unit: "%", min: 0, max: 0.8 },
         { key: "radiation", label: "Radiation", unit: "mSv/day", min: 0, max: 1 },
-        { key: "noise", label: "Noise Level", unit: "dB", min: 30, max: 60 },
+        { key: "gravity", label: "Gravity Condition", unit: "g", min: 0, max: 0.015 },
       ]},
       behavioral: { title: "Behavioral & Cognitive", vitals: [
-        { key: "sleepHours", label: "Sleep", unit: "hrs", min: 6, max: 10 },
-        { key: "stress", label: "Stress Level", unit: "/100", min: 0, max: 60 },
-        { key: "reactionTime", label: "Reaction Time", unit: "ms", min: 150, max: 330 },
-        { key: "fatigue", label: "Fatigue", unit: "/100", min: 0, max: 60 },
+        { key: "workload", label: "Workload", unit: "% of capacity", min: 40, max: 85 },
+        { key: "schedule", label: "Schedule Adherence", unit: "%", min: 80, max: 100 },
       ]},
     };
 

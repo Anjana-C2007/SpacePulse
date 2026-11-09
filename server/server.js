@@ -1,13 +1,16 @@
-  const WebSocket = require("ws");
+   const WebSocket = require("ws");
 const wss = new WebSocket.Server({ port: 8080 });
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
 // current values, each drifts slowly within a realistic range
 const s = {
+  // Physiology
   heartRate: 75, spo2: 98, temperature: 36.8, systolic: 118, diastolic: 76, respRate: 16,
-  cabinTemp: 22, humidity: 45, co2: 0.5, cabinPressure: 101, radiation: 0.6, noise: 48,
-  sleepHours: 7, stress: 30, reactionTime: 250, fatigue: 25,
+  // Environment
+  co2: 0.5, radiation: 0.6, gravity: 0.01,
+  // Behavioral & Cognitive
+  workload: 60, schedule: 92,
 };
 
 function drift(key, step, min, max, decimals = 0) {
@@ -28,17 +31,12 @@ setInterval(() => {
     diastolic: drift("diastolic", 3, 68, 85),
     respRate: drift("respRate", 1.5, 12, 20),
     // Environment
-    cabinTemp: drift("cabinTemp", 0.3, 20, 25, 1),
-    humidity: drift("humidity", 2, 35, 60),
     co2: drift("co2", 0.1, 0.3, 0.9, 2),
-    cabinPressure: drift("cabinPressure", 0.4, 99, 103, 1),
     radiation: drift("radiation", 0.1, 0.3, 1.2, 2),
-    noise: drift("noise", 3, 42, 62),
+    gravity: drift("gravity", 0.004, 0, 0.02, 3),
     // Behavioral & Cognitive
-    sleepHours: drift("sleepHours", 0.2, 5, 8.5, 1),
-    stress: drift("stress", 6, 10, 70),
-    reactionTime: drift("reactionTime", 20, 200, 380),
-    fatigue: drift("fatigue", 5, 10, 70),
+    workload: drift("workload", 6, 30, 95),
+    schedule: drift("schedule", 4, 70, 100),
     timestamp: Date.now(),
   };
 
