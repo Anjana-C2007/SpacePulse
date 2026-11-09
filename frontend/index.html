@@ -1,26 +1,122 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Sensor Dashboard</title>
+  <title>SpacePulse Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
-    body { font-family: sans-serif; text-align: center; margin-top: 60px; }
-    #value { font-size: 72px; }
-    #log { margin-top: 20px; color: gray; }
+    body { font-family: sans-serif; background: #2c3b6e; color: rgb(192, 225, 226);
+           margin: 0; padding: 20px; }
+    header { display: flex; justify-content: space-between; align-items: center; }
+    button { padding: 8px 16px; border: none; border-radius: 6px;
+             background: #2064ec; color: white; cursor: pointer; font-size: 14px; }
+    #status { font-size: 14px; margin-top: 4px; }
+    #alert { margin: 16px 0; padding: 12px; border-radius: 8px;
+             background: #1f7a4d; color: white; text-align: center; }
+    #alert.danger { background: #c0392b; }
+    .cards { display: flex; gap: 16px; flex-wrap: wrap; }
+    .card { flex: 1; min-width: 180px; background: #1c2750; border-radius: 10px;
+            padding: 16px; text-align: center; }
+    .card.danger { outline: 2px solid #f11414; }
+    .label { font-size: 14px; opacity: 0.8; }
+    .value { font-size: 40px; margin-top: 8px; }
+    .chart-box { background: #1c2750; border-radius: 10px; padding: 16px; margin-top: 16px; }
   </style>
 </head>
 <body>
-  <h2>Heart Rate</h2>
-  <div id="value">--</div>
-  <div id="log"></div>
+  <header>
+    <div>
+      <h1 style="margin:0">SpacePulse</h1>
+      <div id="status">Connecting...</div>
+    </div>
+    <button id="logout">Log out</button>
+  </header>
+
+  <div id="alert">All vitals normal</div>
+
+  <div class="cards">
+    <div class="card" id="hrCard">
+      <div class="label">Heart Rate</div>
+      <div class="value" id="hr">--</div>
+    </div>
+    <div class="card" id="spo2Card">
+      <div class="label">Oxygen (SpO2)</div>
+      <div class="value" id="spo2">--</div>
+    </div>
+    <div class="card" id="tempCard">
+      <div class="label">Body Temperature</div>
+      <div class="value" id="temp">--</div>
+    </div>
+  </div>
+
+  <div class="chart-box">
+    <canvas id="chart" height="100"></canvas>
+  </div>
 
   <script>
+    // Only logged-in users can see this page
+    if (sessionStorage.getItem("loggedIn") !== "true") {
+      window.location.href = "login.html";
+    }
+
+    document.getElementById("logout").addEventListener("click", () => {
+      sessionStorage.removeItem("loggedIn");
+      window.location.href = "login.html";
+    });
+
+    // Live chart: keeps the last 30 readings
+    const chart = new Chart(document.getElementById("chart"), {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [{
+          label: "Heart rate (bpm)",
+          data: [],
+          borderColor: "#ff6b6b",
+          tension: 0.3,
+        }],
+      },
+      options: { animation: false, scales: { y: { min: 40, max: 140 } } },
+    });
+
+    function setCard(cardId, bad) {
+      document.getElementById(cardId).classList.toggle("danger", bad);
+    }
+
+    function update(d) {
+      document.getElementById("hr").textContent = d.heartRate + " bpm";
+      document.getElementById("spo2").textContent = d.spo2 + " %";
+      document.getElementById("temp").textContent = d.temperature + " °C";
+
+      const hrBad = d.heartRate > 110 || d.heartRate < 50;
+      const spo2Bad = d.spo2 < 95;
+      const tempBad = d.temperature > 37.5;
+      setCard("hrCard", hrBad);
+      setCard("spo2Card", spo2Bad);
+      setCard("tempCard", tempBad);
+
+      const alertBox = document.getElementById("alert");
+      const problems = [];
+      if (hrBad) problems.push("heart rate");
+      if (spo2Bad) problems.push("oxygen level");
+      if (tempBad) problems.push("temperature");
+      alertBox.classList.toggle("danger", problems.length > 0);
+      alertBox.textContent = problems.length
+        ? "Warning: abnormal " + problems.join(", ")
+        : "All vitals normal";
+
+      chart.data.labels.push(new Date(d.timestamp).toLocaleTimeString());
+      chart.data.datasets[0].data.push(d.heartRate);
+      if (chart.data.labels.length > 30) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+      }
+      chart.update();
+    }
+
     const ws = new WebSocket("ws://localhost:8080");
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      document.getElementById("value").textContent = data.value + " bpm";
-      document.getElementById("log").textContent =
-        "Last update: " + new Date(data.timestamp).toLocaleTimeString();
-    };
+    ws.onopen = () => (document.getElementById("status").textContent = "Live: connected");
+    ws.onclose = () => (document.getElementById("status").textContent = "Disconnected");
+    ws.onmessage = (event) => update(JSON.parse(event.data));
   </script>
 </body>
-</html>
+</html> 

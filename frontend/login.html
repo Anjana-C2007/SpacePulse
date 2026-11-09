@@ -1,40 +1,91 @@
+ 
 <!DOCTYPE html>
 <html>
 <head>
-  <title>SpacePulse Login</title>
-  <style>
-    body { font-family: sans-serif; background: #2c3b6e; color: rgb(192, 225, 226);
-           display: flex; justify-content: center; margin-top: 100px; }
-    form { display: flex; flex-direction: column; gap: 12px; width: 280px; }
-    input, button { padding: 10px; border-radius: 6px; border: none; font-size: 16px; }
-    button { background: #2064ec; color: white; cursor: pointer; }
-    #error { color: #f11414; min-height: 20px; }
-  </style>
-</head>
-<body>
-  <form id="logincredentials">
-    <h2>SpacePulse</h2>
-    <input id="username" placeholder="Username" required />
-    <input id="password" type="password" placeholder="Password" required />
-    <div id="error"></div>
-    <button type="submit">Log in</button>
-  </form>
+    <title>SpacePulse Login</title>
 
-  <script>
-    if (sessionStorage.getItem("loggedIn") !== "true") {
-  window.location.href = "login.html";
-}
-    document.getElementById("loginForm").addEventListener("submit", (e) => {
-      e.preventDefault();
-      const u = document.getElementById("username").value;
-      const p = document.getElementById("password").value;
-      if (u === "hari" && p === "space123") {
-        sessionStorage.setItem("loggedIn", "true");
-        window.location.href = "index.html";
-      } else {
-        document.getElementById("error").textContent = "Wrong username or password";
-      }
-    });
-  </script>
+    <style>
+        body {
+            font-family: sans-serif;
+            background: #2c3b6e;
+            color: rgb(192, 225, 226);
+            display: flex;
+            justify-content: center;
+            margin-top: 100px;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 280px;
+        }
+
+        input, button {
+            padding: 10px;
+            border-radius: 6px;
+            border: none;
+            font-size: 16px;
+        }
+
+        button {
+            background: #2064ec;
+            color: white;
+            cursor: pointer;
+        }
+
+        #error {
+            color: #f11414;
+            min-height: 20px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <form id="logincredentials">
+
+        <h2>SpacePulse</h2>
+
+        <input
+            id="username"
+            type="text"
+            placeholder="Username"
+            required
+        />
+
+        <input
+            id="password"
+            type="password"
+            placeholder="Password"
+            required
+        />
+
+        <div id="error"></div>
+
+        <button type="submit">Log in</button>
+
+    </form>
+
+    <script>
+    document.getElementById("logincredentials")
+        .addEventListener("submit", function(e) {
+
+            e.preventDefault();
+
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+
+            if (username === "hari" && password === "space123") {
+                sessionStorage.setItem("loggedIn", "true");
+                window.location.href = "index.html";
+            } else {
+                document.getElementById("error").textContent =
+                    "Wrong username or password";
+            }
+        });
+</script>
+         
+
 </body>
 </html>
