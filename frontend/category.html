@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SpacePulse</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    body { font-family: sans-serif; background: #2c3b6e; color: rgb(192, 225, 226);
+           margin: 0; padding: 20px; }
+    header { display: flex; justify-content: space-between; align-items: center; }
+    button { padding: 8px 16px; border: none; border-radius: 6px;
+             background: #2064ec; color: white; cursor: pointer; font-size: 14px; }
+    a { color: #7fb0ff; }
+    #status { font-size: 14px; margin-top: 4px; }
+    #alert { margin: 16px 0; padding: 12px; border-radius: 8px;
+             background: #1f7a4d; color: white; text-align: center; }
+    #alert.danger { background: #c0392b; }
+    .cards { display: flex; gap: 16px; flex-wrap: wrap; }
+    .card { flex: 1; min-width: 180px; background: #1c2750; border-radius: 10px;
+            padding: 16px; text-align: center; cursor: pointer; }
+    .card.selected { outline: 2px solid #7fb0ff; }
+    .card.danger { outline: 2px solid #f11414; }
+    .label { font-size: 14px; opacity: 0.8; }
+    .value { font-size: 32px; margin-top: 8px; }
+    .range { font-size: 12px; opacity: 0.6; margin-top: 6px; }
+    .chart-box { background: #1c2750; border-radius: 10px; padding: 16px; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <a href="dashboard.html">← Back to dashboard</a>
+      <h1 id="title" style="margin:8px 0 0">SpacePulse</h1>
+      <div id="status">Connecting...</div>
+    </div>
+    <button id="logout">Log out</button>
+  </header>
+
+  <div id="alert">All values normal</div>
+  <div class="cards" id="cards"></div>
+  <div class="chart-box"><canvas id="chart" height="100"></canvas></div>
+
+  <script>
+    if (sessionStorage.getItem("loggedIn") !== "true") {
+      window.location.href = "login.html";
+    }
+    document.getElementById("logout").addEventListener("click", () => {
+      sessionStorage.removeItem("loggedIn");
+      window.location.href = "login.html";
+    });
+
+    // To add a vital: add one line here (and the same key in server.js)
+    const CONFIG = {
+      physiology: { title: "Physiology", vitals: [
+        { key: "heartRate", label: "Heart Rate", unit: "bpm", min: 50, max: 110 },
+        { key: "spo2", label: "Oxygen (SpO2)", unit: "%", min: 95, max: 100 },
+        { key: "temperature", label: "Body Temperature", unit: "°C", min: 36, max: 37.5 },
+        { key: "systolic", label: "Blood Pressure (Sys)", unit: "mmHg", min: 90, max: 140 },
+        { key: "diastolic", label: "Blood Pressure (Dia)", unit: "mmHg", min: 60, max: 90 },
+        { key: "respRate", label: "Respiratory Rate", unit: "/min", min: 12, max: 20 },
+      ]},
+      environment: { title: "Environment", vitals: [
+        { key: "cabinTemp", label: "Cabin Temperature", unit: "°C", min: 18, max: 27 },
+        { key: "humidity", label: "Humidity", unit: "%", min: 30, max: 65 },
+        { key: "co2", label: "CO2 Level", unit: "%", min: 0, max: 0.8 },
+        { key: "cabinPressure", label: "Cabin Pressure", unit: "kPa", min: 99, max: 104 },
+        { key: "radiation", label: "Radiation", unit: "mSv/day", min: 0, max: 1 },
+        { key: "noise", label: "Noise Level", unit: "dB", min: 30, max: 60 },
+      ]},
+      behavioral: { title: "Behavioral & Cognitive", vitals: [
+        { key: "sleepHours", label: "Sleep", unit: "hrs", min: 6, max: 10 },
+        { key: "stress", label: "Stress Level", unit: "/100", min: 0, max: 60 },
+        { key: "reactionTime", label: "Reaction Time", unit: "ms", min: 150, max: 330 },
+        { key: "fatigue", label: "Fatigue", unit: "/100", min: 0, max: 60 },
+      ]},
+    };
+
+    const params = new URLSearchParams(location.search);
+    const type = CONFIG[params.get("type")] ? params.get("type") : "physiology";
+    const cfg = CONFIG[type];
+    document.getElementById("title").textContent = cfg.title;
+
+    // Build the cards
+    const cardsEl = document.getElementById("cards");
+    cfg.vitals.forEach((v) => {
+      const div = document.createElement("div");
+      div.className = "card";
+      div.id = "card-" + v.key;
+      div.innerHTML =
+        '<div class="label">' + v.label + '</div>' +
+        '<div class="value" id="val-' + v.key + '">--</div>' +
+        '<div class="range">Normal: ' + v.min + ' to ' + v.max + ' ' + v.unit + '</div>';
+      div.addEventListener("click", () => selectVital(v.key));
+      cardsEl.appendChild(div);
+    });
+
+    // Chart for the selected vital (click a card to switch)
+    const history = {};
+    cfg.vitals.forEach((v) => (history[v.key] = []));
+    const labels = [];
+    let selected = cfg.vitals[0].key;
+
+    const chart = new Chart(document.getElementById("chart"), {
+      type: "line",
+      data: { labels: labels, datasets: [{ label: "", data: [], borderColor: "#ff6b6b", tension: 0.3 }] },
+      options: { animation: false },
+    });
+
+    function selectVital(key) {
+      selected = key;
+      const v = cfg.vitals.find((x) => x.key === key);
+      cfg.vitals.forEach((x) =>
+        document.getElementById("card-" + x.key).classList.toggle("selected", x.key === key));
+      chart.data.datasets[0].label = v.label + " (" + v.unit + ")";
+      chart.data.datasets[0].data = history[key];
+      chart.update();
+    }
+    selectVital(selected);
+
+    // Live data
+    const ws = new WebSocket("ws://localhost:8080");
+    ws.onopen = () => (document.getElementById("status").textContent = "Live: connected");
+    ws.onclose = () => (document.getElementById("status").textContent = "Disconnected");
+    ws.onmessage = (event) => {
+      const d = JSON.parse(event.data);
+      const problems = [];
+
+      labels.push(new Date(d.timestamp).toLocaleTimeString());
+      if (labels.length > 30) labels.shift();
+
+      cfg.vitals.forEach((v) => {
+        const value = d[v.key];
+        document.getElementById("val-" + v.key).textContent = value + " " + v.unit;
+        const bad = value < v.min || value > v.max;
+        document.getElementById("card-" + v.key).classList.toggle("danger", bad);
+        if (bad) problems.push(v.label);
+
+        history[v.key].push(value);
+        if (history[v.key].length > 30) history[v.key].shift();
+      });
+
+      const alertBox = document.getElementById("alert");
+      alertBox.classList.toggle("danger", problems.length > 0);
+      alertBox.textContent = problems.length
+        ? "Warning: abnormal " + problems.join(", ")
+        : "All values normal";
+
+      chart.update();
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SpacePulse Dashboard</title>
+  <style>
+    body { font-family: sans-serif; background: #2c3b6e; color: rgb(192, 225, 226);
+           margin: 0; padding: 20px; }
+    header { display: flex; justify-content: space-between; align-items: center; }
+    h1 { margin: 0; }
+    button { padding: 8px 16px; border: none; border-radius: 6px;
+             background: #2064ec; color: white; cursor: pointer; font-size: 14px; }
+    .grid { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 20px; }
+    .card { flex: 1; min-width: 240px; background: #1c2750; border-radius: 10px; padding: 16px; }
+    .card h3 { margin-top: 0; }
+    .row { display: flex; justify-content: space-between; padding: 6px 0;
+           border-bottom: 1px solid #2c3b6e; }
+    .row:last-child { border-bottom: none; }
+    .status { font-size: 24px; margin: 8px 0; }
+    .nav-card { cursor: pointer; text-align: center; transition: transform 0.15s; }
+    .nav-card:hover { transform: translateY(-3px); background: #243166; }
+    .nav-card .icon { font-size: 40px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>SpacePulse</h1>
+    <button id="logout">Log out</button>
+  </header>
+
+  <h2>Welcome back, Hari</h2>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Astronaut Profile</h3>
+      <div class="row"><span>Name</span><span>Hari</span></div>
+      <div class="row"><span>Crew ID</span><span>SP-001</span></div>
+      <div class="row"><span>Mission</span><span>Long-duration mission</span></div>
+      <div class="row"><span>Mission day</span><span>42</span></div>
+    </div>
+
+    <div class="card">
+      <h3>Current Health Status</h3>
+      <div class="status" id="status">Connecting...</div>
+      <div class="row"><span>Heart rate</span><span id="hr">--</span></div>
+      <div class="row"><span>Oxygen (SpO2)</span><span id="spo2">--</span></div>
+      <div class="row"><span>Temperature</span><span id="temp">--</span></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card nav-card" onclick="location.href='vitals.html'">
+        <h3>Physiology</h3>
+        <div class="icon">📊</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card nav-card" onclick="location.href='vitals.html'">
+        <h3>Environment</h3>
+        <div class="icon">📊</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card nav-card" onclick="location.href='vitals.html'">
+        <h3>Behavioral & Cognitive</h3>
+        <div class="icon">📊</div>
+    </div>
+  </div>
+
+  <script>
+    if (sessionStorage.getItem("loggedIn") !== "true") {
+      window.location.href = "login.html";
+    }
+
+    document.getElementById("logout").addEventListener("click", () => {
+      sessionStorage.removeItem("loggedIn");
+      window.location.href = "login.html";
+    });
+
+    // Small live snapshot from the same data server
+    const ws = new WebSocket("ws://localhost:8080");
+    ws.onclose = () => (document.getElementById("status").textContent = "Offline");
+    ws.onmessage = (event) => {
+      const d = JSON.parse(event.data);
+      document.getElementById("hr").textContent = d.heartRate + " bpm";
+      document.getElementById("spo2").textContent = d.spo2 + " %";
+      document.getElementById("temp").textContent = d.temperature + " °C";
+
+      const bad = d.heartRate > 110 || d.heartRate < 50 || d.spo2 < 95 || d.temperature > 37.5;
+      document.getElementById("status").textContent = bad ? "⚠️ Needs attention" : "✅ Normal";
+    };
+  </script>
+</body>
+</html>
