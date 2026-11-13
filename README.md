@@ -16,10 +16,21 @@ HTML, CSS and JavaScript frontend, Chart.js for charts, Node.js with WebSocket (
 
  ## Run it
 1. Install [Node.js](https://nodejs.org) (version 22 or newer, because the database is built in).
-2. In the project folder: `npm install`
-3. Start the server: `node server/server.js`
-4. Open **http://localhost:3000/login.html** in your browser.
-5. Log in with `hari` / `space123` (demo account).
+2. In the project folder, install the dependencies:
+   ```
+   npm install
+   ```
+3. Start the server:
+   ```
+   node server/server.js
+   ```
+4. Open **http://localhost:3000/login.html** in your browser. Open it this way, not by double-clicking the file or using VS Code's Live Server.
+5. Log in with the demo account: username `hari`, password `space123`.
+
+The database file (`server/spacepulse.db`) is created automatically the first time the server starts. If you restart the server, log in again.
+
+## Demo controls
+On the dashboard, the **Demo controls** card has buttons (CO2 leak, Solar radiation, High heart rate, Low oxygen) that simulate a problem for 20 seconds. The status changes to "Needs attention", and the alert appears in **Alert History** with a suggested action.
 
 ## How it works
 - `server/server.js` serves the website and a REST API on port 3000, and streams live readings over WebSocket on port 8080.
@@ -32,10 +43,9 @@ HTML, CSS and JavaScript frontend, Chart.js for charts, Node.js with WebSocket (
 server/server.js      mock sensor data over WebSocket
 frontend/             login, dashboard, vitals, alerts, profile, schedule
 ```
-
 ## Notes
 - Sensor readings are simulated. A real sensor can replace the generator in `server/server.js` as long as it sends the same JSON format.
-- The login is a demo and is checked in the browser, so it is not secure.
+- This is a hackathon prototype. The alert thresholds and suggested actions are general examples, not medical guidance. 
 
 ## Future work
 Server-side login, a database for readings and alerts, and real sensor input.
