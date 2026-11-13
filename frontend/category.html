@@ -1,4 +1,4 @@
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
   <title>SpacePulse</title>
@@ -101,11 +101,14 @@
       } catch (e) {}
     }
 
-    // Live data from the sensor server
+    // Live data from the sensor server (reconnects if it drops)
     function connect() {
       const ws = new WebSocket("ws://localhost:8080");
       ws.onopen = () => (document.getElementById("status").textContent = "Live: connected");
-      ws.onclose = () => (document.getElementById("status").textContent = "Disconnected");
+      ws.onclose = () => {
+        document.getElementById("status").textContent = "Disconnected, retrying...";
+        setTimeout(connect, 2000);
+      };
       ws.onmessage = (event) => {
         const d = JSON.parse(event.data);
         const problems = [];

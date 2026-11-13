@@ -19,6 +19,7 @@
     .nav-card { cursor: pointer; text-align: center; transition: transform 0.15s; }
     .nav-card:hover { transform: translateY(-3px); background: #243166; }
     .nav-card .icon { font-size: 40px; }
+    .demo button { margin: 4px; }
   </style>
 </head>
 <body>
@@ -45,58 +46,83 @@
       <div class="row"><span>Oxygen (SpO2)</span><span id="spo2">--</span></div>
       <div class="row"><span>Temperature</span><span id="temp">--</span></div>
     </div>
+
+    <div class="card demo">
+      <h3>Demo controls</h3>
+      <button onclick="demo('co2')">CO2 leak</button>
+      <button onclick="demo('radiation')">Solar radiation</button>
+      <button onclick="demo('heart')">High heart rate</button>
+      <button onclick="demo('oxygen')">Low oxygen</button>
+      <div id="demoMsg" style="margin-top:8px"></div>
+    </div>
   </div>
 
-   <div class="grid">
-  <div class="card nav-card" onclick="location.href='category.html?type=physiology'">
-    <h3>Physiology</h3>
-    <div class="icon">❤️</div>
+  <div class="grid">
+    <div class="card nav-card" onclick="location.href='category.html?type=physiology'">
+      <h3>Physiology</h3>
+      <div class="icon">❤️</div>
+    </div>
+    <div class="card nav-card" onclick="location.href='category.html?type=environment'">
+      <h3>Environment</h3>
+      <div class="icon">🌡️</div>
+    </div>
+    <div class="card nav-card" onclick="location.href='category.html?type=behavioral'">
+      <h3>Behavioral & Cognitive</h3>
+      <div class="icon">🧠</div>
+    </div>
   </div>
-  <div class="card nav-card" onclick="location.href='category.html?type=environment'">
-    <h3>Environment</h3>
-    <div class="icon">🌡️</div>
-  </div>
-  <div class="card nav-card" onclick="location.href='category.html?type=behavioral'">
-    <h3>Behavioral & Cognitive</h3>
-    <div class="icon">🧠</div>
-  </div>
+
+  <div class="grid">
     <div class="card nav-card" onclick="location.href='profile.html'">
-    <h3>Medical Profile</h3>
-    <div class="icon">🩺</div>
+      <h3>Medical Profile</h3>
+      <div class="icon">🩺</div>
+    </div>
+    <div class="card nav-card" onclick="location.href='alerts.html'">
+      <h3>Alert History</h3>
+      <div class="icon">🚨</div>
+    </div>
+    <div class="card nav-card" onclick="location.href='schedule.html'">
+      <h3>Schedule</h3>
+      <div class="icon">📅</div>
+    </div>
   </div>
-  <div class="card nav-card" onclick="location.href='alerts.html'">
-    <h3>Alert History</h3>
-    <div class="icon">🚨</div>
-  </div>
-  <div class="card nav-card" onclick="location.href='schedule.html'">
-    <h3>Schedule</h3>
-    <div class="icon">📅</div>
-  </div>
-</div>
-<script src="shared.js"></script>
+
+  <script src="shared.js"></script>
   <script>
-    if (sessionStorage.getItem("loggedIn") !== "true") {
-      window.location.href = "login.html";
+    requireLogin();
+    document.getElementById("logout").addEventListener("click", logout);
+
+    // Demo buttons: make the server simulate a problem for 20 seconds
+    async function demo(name) {
+      const msg = document.getElementById("demoMsg");
+      try {
+        await api("/api/demo/" + name, { method: "POST" });
+        msg.textContent = "Triggered. Watch the status and the alert history.";
+      } catch (e) {
+        msg.textContent = "Could not trigger. Log in again and retry.";
+      }
     }
 
-    document.getElementById("logout").addEventListener("click", () => {
-      sessionStorage.removeItem("loggedIn");
-      window.location.href = "login.html";
-    });
+    // Live snapshot from the sensor stream (reconnects if it drops)
+    function connect() {
+      const ws = new WebSocket("ws://localhost:8080");
+      ws.onclose = () => {
+        document.getElementById("status").textContent = "Offline, retrying...";
+        setTimeout(connect, 2000);
+      };
+      ws.onmessage = (event) => {
+        const d = JSON.parse(event.data);
+        document.getElementById("hr").textContent = d.heartRate + " bpm";
+        document.getElementById("spo2").textContent = d.spo2 + " %";
+        document.getElementById("temp").textContent = d.temperature + " °C";
 
-    // Small live snapshot from the same data server
-    const ws = new WebSocket("ws://localhost:8080");
-    ws.onclose = () => (document.getElementById("status").textContent = "Offline");
-    ws.onmessage = (event) => {
-      const d = JSON.parse(event.data);
-            checkAlerts(d);
-      document.getElementById("hr").textContent = d.heartRate + " bpm";
-      document.getElementById("spo2").textContent = d.spo2 + " %";
-      document.getElementById("temp").textContent = d.temperature + " °C";
-
-      const bad = d.heartRate > 110 || d.heartRate < 50 || d.spo2 < 95 || d.temperature > 37.5;
-      document.getElementById("status").textContent = bad ? "⚠️ Needs attention" : "✅ Normal";
-    };
+        const bad = CONFIG.physiology.vitals
+          .concat(CONFIG.environment.vitals, CONFIG.behavioral.vitals)
+          .some((v) => d[v.key] < v.min || d[v.key] > v.max);
+        document.getElementById("status").textContent = bad ? "⚠️ Needs attention" : "✅ Normal";
+      };
+    }
+    connect();
   </script>
 </body>
 </html>

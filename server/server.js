@@ -76,7 +76,10 @@ app.get("/api/history", auth, (req, res) => {
 });
 
 // Schedule progress, saved per user and per day
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+};
 
 app.get("/api/schedule", auth, (req, res) => {
   const rows = db.prepare("SELECT task FROM done_tasks WHERE username = ? AND day = ?")
@@ -148,6 +151,23 @@ function checkAlerts(reading) {
   activeAlerts = nowActive;
 }
 
+// Demo scenarios: each overrides some readings for 20 seconds
+const SCENARIOS = {
+  co2: { co2: 1.1 },
+  radiation: { radiation: 1.6 },
+  heart: { heartRate: 128 },
+  oxygen: { spo2: 91 },
+};
+let scenario = null;
+let scenarioUntil = 0;
+
+app.post("/api/demo/:name", auth, (req, res) => {
+  const chosen = SCENARIOS[req.params.name];
+  if (!chosen) return res.status(400).json({ error: "Unknown scenario" });
+  scenario = chosen;
+  scenarioUntil = Date.now() + 20000;
+  res.json({ ok: true });
+});
 let tick = 0;
 setInterval(() => {
   const spike = Math.random() < 0.05 ? 30 : 0;
@@ -166,6 +186,7 @@ setInterval(() => {
     timestamp: Date.now(),
   };
 
+    if (scenario && Date.now() < scenarioUntil) Object.assign(reading, scenario);
   checkAlerts(reading);
   if (++tick % 5 === 0) { // save one reading every 5 seconds
     db.prepare("INSERT INTO readings (ts, data) VALUES (?, ?)").run(reading.timestamp, JSON.stringify(reading));
