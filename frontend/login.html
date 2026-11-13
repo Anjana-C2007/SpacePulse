@@ -1,5 +1,4 @@
- 
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html>
 <head>
     <title>SpacePulse Login</title>
@@ -44,48 +43,41 @@
 <body>
 
     <form id="logincredentials">
-
         <h2>SpacePulse</h2>
-
-        <input
-            id="username"
-            type="text"
-            placeholder="Username"
-            required
-        />
-
-        <input
-            id="password"
-            type="password"
-            placeholder="Password"
-            required
-        />
-
+        <input id="username" type="text" placeholder="Username" required />
+        <input id="password" type="password" placeholder="Password" required />
         <div id="error"></div>
-
         <button type="submit">Log in</button>
-
     </form>
 
     <script>
-    document.getElementById("logincredentials")
-        .addEventListener("submit", function(e) {
-
+        document.getElementById("logincredentials").addEventListener("submit", async function (e) {
             e.preventDefault();
-
             const username = document.getElementById("username").value;
             const password = document.getElementById("password").value;
+            const error = document.getElementById("error");
 
-            if (username === "hari" && password === "space123") {
+            try {
+                const res = await fetch("/api/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password }),
+                });
+                if (res.status === 401) {
+                    error.textContent = "Wrong username or password";
+                    return;
+                }
+                if (!res.ok) throw new Error("Server error");
+                const data = await res.json();
                 sessionStorage.setItem("loggedIn", "true");
-                 window.location.href = "dashboard.html";
-            } else {
-                document.getElementById("error").textContent =
-                    "Wrong username or password";
+                sessionStorage.setItem("token", data.token);
+                window.location.href = "dashboard.html";
+            } catch (err) {
+                error.textContent = "Cannot reach the server. Is it running?";
             }
         });
-</script>
-         
+    </script>
 
 </body>
 </html>
+ 
