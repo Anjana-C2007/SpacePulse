@@ -73,7 +73,7 @@
     <div class="icon">📅</div>
   </div>
 </div>
-
+<script src="shared.js"></script>
   <script>
     if (sessionStorage.getItem("loggedIn") !== "true") {
       window.location.href = "login.html";
@@ -89,6 +89,7 @@
     ws.onclose = () => (document.getElementById("status").textContent = "Offline");
     ws.onmessage = (event) => {
       const d = JSON.parse(event.data);
+            checkAlerts(d);
       document.getElementById("hr").textContent = d.heartRate + " bpm";
       document.getElementById("spo2").textContent = d.spo2 + " %";
       document.getElementById("temp").textContent = d.temperature + " °C";
