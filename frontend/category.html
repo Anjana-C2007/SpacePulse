@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html>
 <head>
   <title>SpacePulse</title>
@@ -39,42 +39,18 @@
   <div class="cards" id="cards"></div>
   <div class="chart-box"><canvas id="chart" height="100"></canvas></div>
 
+  <script src="shared.js"></script>
   <script>
-    if (sessionStorage.getItem("loggedIn") !== "true") {
-      window.location.href = "login.html";
-    }
-    document.getElementById("logout").addEventListener("click", () => {
-      sessionStorage.removeItem("loggedIn");
-      window.location.href = "login.html";
-    });
+    requireLogin();
+    document.getElementById("logout").addEventListener("click", logout);
 
-    // To add a vital: add one line here (and the same key in server.js)
-    const CONFIG = {
-      physiology: { title: "Physiology", vitals: [
-        { key: "heartRate", label: "Heart Rate", unit: "bpm", min: 50, max: 110 },
-        { key: "spo2", label: "Oxygen (SpO2)", unit: "%", min: 95, max: 100 },
-        { key: "temperature", label: "Body Temperature", unit: "°C", min: 36, max: 37.5 },
-        { key: "systolic", label: "Blood Pressure (Sys)", unit: "mmHg", min: 90, max: 140 },
-        { key: "diastolic", label: "Blood Pressure (Dia)", unit: "mmHg", min: 60, max: 90 },
-        { key: "respRate", label: "Respiratory Rate", unit: "/min", min: 12, max: 20 },
-      ]},
-             environment: { title: "Environment", vitals: [
-        { key: "co2", label: "Cabin CO2 Level", unit: "%", min: 0, max: 0.8 },
-        { key: "radiation", label: "Radiation", unit: "mSv/day", min: 0, max: 1 },
-        { key: "gravity", label: "Gravity Condition", unit: "g", min: 0, max: 0.015 },
-      ]},
-      behavioral: { title: "Behavioral & Cognitive", vitals: [
-        { key: "workload", label: "Workload", unit: "% of capacity", min: 40, max: 85 },
-        { key: "schedule", label: "Schedule Adherence", unit: "%", min: 80, max: 100 },
-      ]},
-    };
-
+    // Which category to show comes from the address: category.html?type=environment
     const params = new URLSearchParams(location.search);
     const type = CONFIG[params.get("type")] ? params.get("type") : "physiology";
     const cfg = CONFIG[type];
     document.getElementById("title").textContent = cfg.title;
 
-    // Build the cards
+    // Build one card per vital
     const cardsEl = document.getElementById("cards");
     cfg.vitals.forEach((v) => {
       const div = document.createElement("div");
@@ -111,14 +87,15 @@
     }
     selectVital(selected);
 
-    // Live data
+    // Live data from the sensor server
     const ws = new WebSocket("ws://localhost:8080");
     ws.onopen = () => (document.getElementById("status").textContent = "Live: connected");
     ws.onclose = () => (document.getElementById("status").textContent = "Disconnected");
     ws.onmessage = (event) => {
       const d = JSON.parse(event.data);
-      const problems = [];
+      checkAlerts(d); // records warnings in the Alert History page
 
+      const problems = [];
       labels.push(new Date(d.timestamp).toLocaleTimeString());
       if (labels.length > 30) labels.shift();
 

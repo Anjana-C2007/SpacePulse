@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SpacePulse - Medical Profile</title>
+  <link rel="stylesheet" href="shared.css" />
+</head>
+<body>
+  <header>
+    <div>
+      <a href="dashboard.html">← Back to dashboard</a>
+      <h1>Medical Profile</h1>
+    </div>
+    <button id="logout">Log out</button>
+  </header>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Personal</h3>
+      <div class="row"><span>Name</span><span>Hari</span></div>
+      <div class="row"><span>Crew ID</span><span>SP-001</span></div>
+      <div class="row"><span>Age</span><span>34</span></div>
+      <div class="row"><span>Blood group</span><span>O+</span></div>
+      <div class="row"><span>Height / Weight</span><span>175 cm / 70 kg</span></div>
+    </div>
+
+    <div class="card">
+      <h3>Baseline (pre-flight)</h3>
+      <div class="row"><span>Resting heart rate</span><span>62 bpm</span></div>
+      <div class="row"><span>Blood pressure</span><span>118 / 76 mmHg</span></div>
+      <div class="row"><span>SpO2</span><span>98 %</span></div>
+      <div class="row"><span>Bone density (T-score)</span><span>0.8</span></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Mission health risks to watch</h3>
+      <div class="row"><span>Radiation exposure</span><span>Cumulative dose</span></div>
+      <div class="row"><span>Bone and muscle loss</span><span>Altered gravity</span></div>
+      <div class="row"><span>Cardiovascular events</span><span>Fluid shifts</span></div>
+      <div class="row"><span>Immune changes</span><span>Closed environment</span></div>
+      <div class="row"><span>Behavioral health</span><span>Isolation and confinement</span></div>
+    </div>
+
+    <div class="card">
+      <h3>My notes</h3>
+      <textarea id="notes" rows="8" style="width:100%; box-sizing:border-box;"
+        placeholder="Symptoms, medication taken, how you feel today..."></textarea>
+      <button id="save" style="margin-top:8px">Save notes</button>
+      <span id="saved" style="margin-left:8px"></span>
+    </div>
+  </div>
+
+  <script src="shared.js"></script>
+  <script>
+    requireLogin();
+    document.getElementById("logout").addEventListener("click", logout);
+    const notes = document.getElementById("notes");
+    notes.value = localStorage.getItem("notes") || "";
+    document.getElementById("save").addEventListener("click", () => {
+      localStorage.setItem("notes", notes.value);
+      document.getElementById("saved").textContent = "Saved";
+      setTimeout(() => (document.getElementById("saved").textContent = ""), 1500);
+    });
+  </script>
+</body>
+</html>

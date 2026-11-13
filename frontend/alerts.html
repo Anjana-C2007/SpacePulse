@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SpacePulse - Alert History</title>
+  <link rel="stylesheet" href="shared.css" />
+</head>
+<body>
+  <header>
+    <div>
+      <a href="dashboard.html">← Back to dashboard</a>
+      <h1>Alert History</h1>
+    </div>
+    <div>
+      <button class="secondary" id="clear">Clear history</button>
+      <button id="logout">Log out</button>
+    </div>
+  </header>
+
+  <p>Warnings are recorded while the dashboard or a vitals page is open.</p>
+  <div id="content"></div>
+
+  <script src="shared.js"></script>
+  <script>
+    requireLogin();
+    document.getElementById("logout").addEventListener("click", logout);
+    document.getElementById("clear").addEventListener("click", () => {
+      localStorage.removeItem("alerts");
+      localStorage.removeItem("activeAlerts");
+      render();
+    });
+
+    function render() {
+      const alerts = getAlerts();
+      const box = document.getElementById("content");
+      if (alerts.length === 0) {
+        box.innerHTML = '<div class="card empty">No alerts recorded yet.</div>';
+        return;
+      }
+      box.innerHTML =
+        "<table><tr><th>Time</th><th>Category</th><th>Vital</th><th>Value</th><th>Normal range</th><th>What to do</th></tr>" +
+        alerts.map((a) =>
+          "<tr><td>" + new Date(a.time).toLocaleString() + "</td><td>" + a.category +
+          "</td><td>" + a.label + "</td><td>" + a.value + "</td><td>" + a.normal +
+          "</td><td>" + a.tip + "</td></tr>").join("") +
+        "</table>";
+    }
+    render();
+    setInterval(render, 3000);
+  </script>
+</body>
+</html>

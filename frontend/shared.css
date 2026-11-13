@@ -1,0 +1,16 @@
+body { font-family: sans-serif; background: #2c3b6e; color: rgb(192, 225, 226); margin: 0; padding: 20px; }
+header { display: flex; justify-content: space-between; align-items: center; }
+h1 { margin: 8px 0 0; }
+a { color: #7fb0ff; }
+button { padding: 8px 16px; border: none; border-radius: 6px; background: #2064ec;
+         color: white; cursor: pointer; font-size: 14px; }
+button.secondary { background: #44507f; }
+.grid { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 20px; }
+.card { flex: 1; min-width: 260px; background: #1c2750; border-radius: 10px; padding: 16px; }
+.card h3 { margin-top: 0; }
+.row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #2c3b6e; }
+.row:last-child { border-bottom: none; }
+table { width: 100%; border-collapse: collapse; background: #1c2750; border-radius: 10px; overflow: hidden; }
+th, td { padding: 10px; text-align: left; border-bottom: 1px solid #2c3b6e; font-size: 14px; }
+th { background: #243166; }
+.empty { padding: 20px; text-align: center; opacity: 0.7; }
