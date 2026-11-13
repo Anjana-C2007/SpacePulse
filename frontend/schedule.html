@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html>
 <head>
   <title>SpacePulse - Schedule</title>
@@ -39,19 +39,15 @@
       { time: "22:00", name: "Sleep" },
     ];
 
-    function getDone() {
-      try { return JSON.parse(localStorage.getItem("doneTasks")) || []; } catch (e) { return []; }
-    }
-    function toggle(i) {
-      const done = getDone();
-      const pos = done.indexOf(i);
-      if (pos >= 0) done.splice(pos, 1); else done.push(i);
-      localStorage.setItem("doneTasks", JSON.stringify(done));
+    let done = [];
+
+    async function toggle(i) {
+      const r = await api("/api/schedule/" + i, { method: "POST" });
+      if (r.done) done.push(i); else done = done.filter((x) => x !== i);
       render();
     }
 
     function render() {
-      const done = getDone();
       const now = new Date();
       const nowMin = now.getHours() * 60 + now.getMinutes();
       let due = 0, doneDue = 0;
@@ -74,7 +70,8 @@
       document.getElementById("content").innerHTML =
         "<table><tr><th>Time</th><th>Task</th><th>Status</th><th></th></tr>" + rows + "</table>";
     }
-    render();
+
+    api("/api/schedule").then((d) => { done = d; render(); });
     setInterval(render, 30000);
   </script>
 </body>

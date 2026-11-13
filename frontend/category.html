@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+  <!DOCTYPE html>
 <html>
 <head>
   <title>SpacePulse</title>
@@ -87,37 +87,54 @@
     }
     selectVital(selected);
 
+    // Fill the chart with recent readings saved by the server
+    async function loadHistory() {
+      try {
+        for (const v of cfg.vitals) {
+          const rows = await api("/api/history?key=" + v.key + "&limit=30");
+          history[v.key].push(...rows.map((r) => r.value));
+          if (v.key === cfg.vitals[0].key) {
+            labels.push(...rows.map((r) => new Date(r.ts).toLocaleTimeString()));
+          }
+        }
+        chart.update();
+      } catch (e) {}
+    }
+
     // Live data from the sensor server
-    const ws = new WebSocket("ws://localhost:8080");
-    ws.onopen = () => (document.getElementById("status").textContent = "Live: connected");
-    ws.onclose = () => (document.getElementById("status").textContent = "Disconnected");
-    ws.onmessage = (event) => {
-      const d = JSON.parse(event.data);
-      checkAlerts(d); // records warnings in the Alert History page
+    function connect() {
+      const ws = new WebSocket("ws://localhost:8080");
+      ws.onopen = () => (document.getElementById("status").textContent = "Live: connected");
+      ws.onclose = () => (document.getElementById("status").textContent = "Disconnected");
+      ws.onmessage = (event) => {
+        const d = JSON.parse(event.data);
+        const problems = [];
 
-      const problems = [];
-      labels.push(new Date(d.timestamp).toLocaleTimeString());
-      if (labels.length > 30) labels.shift();
+        labels.push(new Date(d.timestamp).toLocaleTimeString());
+        if (labels.length > 30) labels.shift();
 
-      cfg.vitals.forEach((v) => {
-        const value = d[v.key];
-        document.getElementById("val-" + v.key).textContent = value + " " + v.unit;
-        const bad = value < v.min || value > v.max;
-        document.getElementById("card-" + v.key).classList.toggle("danger", bad);
-        if (bad) problems.push(v.label);
+        cfg.vitals.forEach((v) => {
+          const value = d[v.key];
+          document.getElementById("val-" + v.key).textContent = value + " " + v.unit;
+          const bad = value < v.min || value > v.max;
+          document.getElementById("card-" + v.key).classList.toggle("danger", bad);
+          if (bad) problems.push(v.label);
 
-        history[v.key].push(value);
-        if (history[v.key].length > 30) history[v.key].shift();
-      });
+          history[v.key].push(value);
+          if (history[v.key].length > 30) history[v.key].shift();
+        });
 
-      const alertBox = document.getElementById("alert");
-      alertBox.classList.toggle("danger", problems.length > 0);
-      alertBox.textContent = problems.length
-        ? "Warning: abnormal " + problems.join(", ")
-        : "All values normal";
+        const alertBox = document.getElementById("alert");
+        alertBox.classList.toggle("danger", problems.length > 0);
+        alertBox.textContent = problems.length
+          ? "Warning: abnormal " + problems.join(", ")
+          : "All values normal";
 
-      chart.update();
-    };
+        chart.update();
+      };
+    }
+
+    loadHistory().then(connect);
   </script>
 </body>
 </html>
