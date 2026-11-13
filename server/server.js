@@ -1,4 +1,4 @@
- const express = require("express");
+const express = require("express");
 const path = require("path");
 const crypto = require("crypto");
 const WebSocket = require("ws");
@@ -75,7 +75,7 @@ app.get("/api/history", auth, (req, res) => {
   res.json(rows.reverse().map((r) => ({ ts: r.ts, value: JSON.parse(r.data)[key] })));
 });
 
-// Schedule progress, saved per user and per day
+// Schedule progress, saved per user and per local day
 const today = () => {
   const d = new Date();
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
@@ -100,6 +100,24 @@ app.post("/api/schedule/:task", auth, (req, res) => {
       .run(req.user, today(), task);
   }
   res.json({ done: !has });
+});
+
+// Demo scenarios: each overrides some readings for 20 seconds
+const SCENARIOS = {
+  co2: { co2: 1.1 },
+  radiation: { radiation: 1.6 },
+  heart: { heartRate: 128 },
+  oxygen: { spo2: 91 },
+};
+let scenario = null;
+let scenarioUntil = 0;
+
+app.post("/api/demo/:name", auth, (req, res) => {
+  const chosen = SCENARIOS[req.params.name];
+  if (!chosen) return res.status(400).json({ error: "Unknown scenario" });
+  scenario = chosen;
+  scenarioUntil = Date.now() + 20000;
+  res.json({ ok: true });
 });
 
 app.listen(3000, () => console.log("Website and API on http://localhost:3000"));
@@ -151,42 +169,26 @@ function checkAlerts(reading) {
   activeAlerts = nowActive;
 }
 
-// Demo scenarios: each overrides some readings for 20 seconds
-const SCENARIOS = {
-  co2: { co2: 1.1 },
-  radiation: { radiation: 1.6 },
-  heart: { heartRate: 128 },
-  oxygen: { spo2: 91 },
-};
-let scenario = null;
-let scenarioUntil = 0;
-
-app.post("/api/demo/:name", auth, (req, res) => {
-  const chosen = SCENARIOS[req.params.name];
-  if (!chosen) return res.status(400).json({ error: "Unknown scenario" });
-  scenario = chosen;
-  scenarioUntil = Date.now() + 20000;
-  res.json({ ok: true });
-});
 let tick = 0;
 setInterval(() => {
-  const spike = Math.random() < 0.05 ? 30 : 0;
+  // Ranges here stay inside the normal ranges, so only the demo buttons cause alerts
   const reading = {
-    heartRate: Math.round(drift("heartRate", 4, 60, 100) + spike),
-    spo2: drift("spo2", 0.6, 94, 100, 1),
-    temperature: drift("temperature", 0.1, 36.2, 37.6, 1),
+    heartRate: Math.round(drift("heartRate", 4, 62, 92)),
+    spo2: drift("spo2", 0.6, 96, 100, 1),
+    temperature: drift("temperature", 0.1, 36.4, 37.3, 1),
     systolic: drift("systolic", 4, 105, 130),
     diastolic: drift("diastolic", 3, 68, 85),
     respRate: drift("respRate", 1.5, 12, 20),
-    co2: drift("co2", 0.1, 0.3, 0.9, 2),
-    radiation: drift("radiation", 0.1, 0.3, 1.2, 2),
-    gravity: drift("gravity", 0.004, 0, 0.02, 3),
-    workload: drift("workload", 6, 30, 95),
-    schedule: drift("schedule", 4, 70, 100),
+    co2: drift("co2", 0.1, 0.3, 0.7, 2),
+    radiation: drift("radiation", 0.1, 0.3, 0.8, 2),
+    gravity: drift("gravity", 0.004, 0, 0.012, 3),
+    workload: drift("workload", 6, 40, 80),
+    schedule: drift("schedule", 4, 85, 100),
     timestamp: Date.now(),
   };
 
-    if (scenario && Date.now() < scenarioUntil) Object.assign(reading, scenario);
+  if (scenario && Date.now() < scenarioUntil) Object.assign(reading, scenario);
+
   checkAlerts(reading);
   if (++tick % 5 === 0) { // save one reading every 5 seconds
     db.prepare("INSERT INTO readings (ts, data) VALUES (?, ?)").run(reading.timestamp, JSON.stringify(reading));
@@ -197,4 +199,4 @@ setInterval(() => {
   });
 }, 1000);
 
-console.log("Live data on ws://localhost:8080"); 
+console.log("Live data on ws://localhost:8080");
