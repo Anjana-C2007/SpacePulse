@@ -2,6 +2,9 @@
 
 A health monitoring dashboard for astronauts on long-duration missions. It collects health indicators, shows them live, and warns the astronaut when a value goes out of range, with a suggested action.
 
+## Live demo
+https://spacepulse-3xvq.onrender.com
+
 ## Features
 - Login page
 - Dashboard with astronaut profile and live health status
