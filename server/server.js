@@ -1,8 +1,13 @@
+const http = require("http");
 const express = require("express");
 const path = require("path");
 const crypto = require("crypto");
 const WebSocket = require("ws");
 const { DatabaseSync } = require("node:sqlite");
+
+const PORT = process.env.PORT || 3000;
+const DEMO_USER = process.env.DEMO_USER || "hari";
+const DEMO_PASSWORD = process.env.DEMO_PASSWORD || "space123";
 
 // ---------- Database ----------
 const db = new DatabaseSync(path.join(__dirname, "spacepulse.db"));
@@ -21,10 +26,10 @@ function hashPassword(password, salt) {
 }
 function addUser(username, password, name) {
   const salt = crypto.randomBytes(16).toString("hex");
-  db.prepare("INSERT OR IGNORE INTO users (username, salt, hash, name) VALUES (?, ?, ?, ?)")
+  db.prepare("INSERT OR REPLACE INTO users (username, salt, hash, name) VALUES (?, ?, ?, ?)")
     .run(username, salt, hashPassword(password, salt), name);
 }
-addUser("hari", "space123", "Hari"); // demo account, created once
+addUser(DEMO_USER, DEMO_PASSWORD, "Hari"); // demo account, refreshed on every start
 
 const sessions = new Map(); // token -> username (cleared when the server restarts)
 
@@ -120,10 +125,12 @@ app.post("/api/demo/:name", auth, (req, res) => {
   res.json({ ok: true });
 });
 
-app.listen(3000, () => console.log("Website and API on http://localhost:3000"));
+// One server for the website, the API and the live WebSocket
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
+server.listen(PORT, () => console.log("Website, API and live data on port " + PORT));
 
-// ---------- Mock sensor + live WebSocket ----------
-const wss = new WebSocket.Server({ port: 8080 });
+// ---------- Mock sensor ----------
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
 const s = {
@@ -198,5 +205,3 @@ setInterval(() => {
     if (client.readyState === WebSocket.OPEN) client.send(JSON.stringify(reading));
   });
 }, 1000);
-
-console.log("Live data on ws://localhost:8080");
