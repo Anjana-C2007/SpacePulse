@@ -103,7 +103,8 @@
 
     // Live data from the sensor server (reconnects if it drops)
     function connect() {
-      const ws = new WebSocket("(location.protocol === "https:" ? "wss://" : "ws://") + location.host");
+      const proto = location.protocol === "https:" ? "wss://" : "ws://";
+const ws = new WebSocket(proto + location.host); 
       ws.onopen = () => (document.getElementById("status").textContent = "Live: connected");
       ws.onclose = () => {
         document.getElementById("status").textContent = "Disconnected, retrying...";

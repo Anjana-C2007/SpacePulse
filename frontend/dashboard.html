@@ -105,7 +105,8 @@
 
     // Live snapshot from the sensor stream (reconnects if it drops)
     function connect() {
-      const ws = new WebSocket("(location.protocol === "https:" ? "wss://" : "ws://") + location.host");
+       const proto = location.protocol === "https:" ? "wss://" : "ws://";
+const ws = new WebSocket(proto + location.host);
       ws.onclose = () => {
         document.getElementById("status").textContent = "Offline, retrying...";
         setTimeout(connect, 2000);
