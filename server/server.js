@@ -1,18 +1,15 @@
 const http = require("http");
 const express = require("express");
 const path = require("path");
-const crypto = require("crypto");
 const WebSocket = require("ws");
 const { DatabaseSync } = require("node:sqlite");
 
 const PORT = process.env.PORT || 3000;
-const DEMO_USER = process.env.DEMO_USER || "hari";
-const DEMO_PASSWORD = process.env.DEMO_PASSWORD || "space123";
+const CREW = "hari"; // schedule progress is saved for this crew member
 
 // ---------- Database ----------
 const db = new DatabaseSync(path.join(__dirname, "spacepulse.db"));
 db.exec(`
-  CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, salt TEXT, hash TEXT, name TEXT);
   CREATE TABLE IF NOT EXISTS readings (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, data TEXT);
   CREATE TABLE IF NOT EXISTS alerts (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER,
     category TEXT, label TEXT, value TEXT, normal TEXT, tip TEXT);
@@ -20,86 +17,49 @@ db.exec(`
     PRIMARY KEY (username, day, task));
 `);
 
-// ---------- Users and login ----------
-function hashPassword(password, salt) {
-  return crypto.scryptSync(password, salt, 32).toString("hex");
-}
-function addUser(username, password, name) {
-  const salt = crypto.randomBytes(16).toString("hex");
-  db.prepare("INSERT OR REPLACE INTO users (username, salt, hash, name) VALUES (?, ?, ?, ?)")
-    .run(username, salt, hashPassword(password, salt), name);
-}
-addUser(DEMO_USER, DEMO_PASSWORD, "Hari"); // demo account, refreshed on every start
-
-const sessions = new Map(); // token -> username (cleared when the server restarts)
-
- function auth(req, res, next) {
-  req.user = DEMO_USER; // no sign-in: everyone uses the demo crew member
-  next();
-}
 // ---------- Web server and API ----------
 const app = express();
 app.use(express.json());
-app.get("/", (req, res) => res.redirect("/dashboard.html")); 
+app.get("/", (req, res) => res.redirect("/dashboard.html"));
+app.use(express.static(path.join(__dirname, "..", "frontend")));
 
-app.post("/api/login", (req, res) => {
-  const { username, password } = req.body || {};
-  if (typeof username !== "string" || typeof password !== "string") {
-    return res.status(400).json({ error: "Missing username or password" });
-  }
-  const user = db.prepare("SELECT * FROM users WHERE username = ?").get(username);
-  if (!user) return res.status(401).json({ error: "Wrong username or password" });
-
-  const attempt = Buffer.from(hashPassword(password, user.salt), "hex");
-  const real = Buffer.from(user.hash, "hex");
-  if (!crypto.timingSafeEqual(attempt, real)) {
-    return res.status(401).json({ error: "Wrong username or password" });
-  }
-  const token = crypto.randomBytes(24).toString("hex");
-  sessions.set(token, user.username);
-  res.json({ token, name: user.name });
-});
-
-app.get("/api/alerts", auth, (req, res) => {
+app.get("/api/alerts", (req, res) => {
   res.json(db.prepare("SELECT * FROM alerts ORDER BY id DESC LIMIT 200").all());
 });
 
-app.delete("/api/alerts", auth, (req, res) => {
+app.delete("/api/alerts", (req, res) => {
   db.exec("DELETE FROM alerts");
   res.json({ ok: true });
 });
 
 // Past values of one vital: /api/history?key=heartRate&limit=60
-app.get("/api/history", auth, (req, res) => {
+app.get("/api/history", (req, res) => {
   const key = String(req.query.key || "");
   const limit = Math.min(Number(req.query.limit) || 60, 500);
   const rows = db.prepare("SELECT ts, data FROM readings ORDER BY id DESC LIMIT ?").all(limit);
   res.json(rows.reverse().map((r) => ({ ts: r.ts, value: JSON.parse(r.data)[key] })));
 });
 
-// Schedule progress, saved per user and per local day
+// Schedule progress, saved per local day
 const today = () => {
   const d = new Date();
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 };
 
-app.get("/api/schedule", auth, (req, res) => {
-  const rows = db.prepare("SELECT task FROM done_tasks WHERE username = ? AND day = ?")
-    .all(req.user, today());
+app.get("/api/schedule", (req, res) => {
+  const rows = db.prepare("SELECT task FROM done_tasks WHERE username = ? AND day = ?").all(CREW, today());
   res.json(rows.map((r) => r.task));
 });
 
-app.post("/api/schedule/:task", auth, (req, res) => {
+app.post("/api/schedule/:task", (req, res) => {
   const task = Number(req.params.task);
   if (!Number.isInteger(task)) return res.status(400).json({ error: "Bad task" });
   const has = db.prepare("SELECT 1 FROM done_tasks WHERE username = ? AND day = ? AND task = ?")
-    .get(req.user, today(), task);
+    .get(CREW, today(), task);
   if (has) {
-    db.prepare("DELETE FROM done_tasks WHERE username = ? AND day = ? AND task = ?")
-      .run(req.user, today(), task);
+    db.prepare("DELETE FROM done_tasks WHERE username = ? AND day = ? AND task = ?").run(CREW, today(), task);
   } else {
-    db.prepare("INSERT INTO done_tasks (username, day, task) VALUES (?, ?, ?)")
-      .run(req.user, today(), task);
+    db.prepare("INSERT INTO done_tasks (username, day, task) VALUES (?, ?, ?)").run(CREW, today(), task);
   }
   res.json({ done: !has });
 });
@@ -114,7 +74,7 @@ const SCENARIOS = {
 let scenario = null;
 let scenarioUntil = 0;
 
-app.post("/api/demo/:name", auth, (req, res) => {
+app.post("/api/demo/:name", (req, res) => {
   const chosen = SCENARIOS[req.params.name];
   if (!chosen) return res.status(400).json({ error: "Unknown scenario" });
   scenario = chosen;
@@ -143,17 +103,17 @@ function drift(key, step, min, max, decimals = 0) {
 
 // Normal ranges, checked on the server so alerts are saved even with no browser open
 const RANGES = [
-  { key: "heartRate", category: "Physiology", label: "Heart Rate", unit: "bpm", min: 50, max: 110, tip: "Rest, breathe slowly, and recheck in 5 minutes. Report if it stays abnormal." },
+  { key: "heartRate", category: "Physiology", label: "Heart rate", unit: "bpm", min: 50, max: 110, tip: "Rest, breathe slowly, and recheck in 5 minutes. Report if it stays abnormal." },
   { key: "spo2", category: "Physiology", label: "Oxygen (SpO2)", unit: "%", min: 95, max: 100, tip: "Check cabin O2 and CO2, then recheck. Report low readings right away." },
-  { key: "temperature", category: "Physiology", label: "Body Temperature", unit: "°C", min: 36, max: 37.5, tip: "Check cabin temperature, hydrate, and recheck. Report persistent fever." },
-  { key: "systolic", category: "Physiology", label: "Blood Pressure (Sys)", unit: "mmHg", min: 90, max: 140, tip: "Sit and rest for 5 minutes, then remeasure." },
-  { key: "diastolic", category: "Physiology", label: "Blood Pressure (Dia)", unit: "mmHg", min: 60, max: 90, tip: "Sit and rest for 5 minutes, then remeasure." },
-  { key: "respRate", category: "Physiology", label: "Respiratory Rate", unit: "/min", min: 12, max: 20, tip: "Check CO2 level and air flow. Report if breathing feels difficult." },
-  { key: "co2", category: "Environment", label: "Cabin CO2 Level", unit: "%", min: 0, max: 0.8, tip: "Check scrubbers and ventilation. High CO2 can cause headaches and fatigue." },
+  { key: "temperature", category: "Physiology", label: "Body temperature", unit: "°C", min: 36, max: 37.5, tip: "Check cabin temperature, hydrate, and recheck. Report persistent fever." },
+  { key: "systolic", category: "Physiology", label: "Blood pressure (systolic)", unit: "mmHg", min: 90, max: 140, tip: "Sit and rest for 5 minutes, then remeasure." },
+  { key: "diastolic", category: "Physiology", label: "Blood pressure (diastolic)", unit: "mmHg", min: 60, max: 90, tip: "Sit and rest for 5 minutes, then remeasure." },
+  { key: "respRate", category: "Physiology", label: "Respiratory rate", unit: "/min", min: 12, max: 20, tip: "Check CO2 level and air flow. Report if breathing feels difficult." },
+  { key: "co2", category: "Environment", label: "Cabin CO2 level", unit: "%", min: 0, max: 0.8, tip: "Check scrubbers and ventilation. High CO2 can cause headaches and fatigue." },
   { key: "radiation", category: "Environment", label: "Radiation", unit: "mSv/day", min: 0, max: 1, tip: "Move to the shielded area and limit exposure time." },
-  { key: "gravity", category: "Environment", label: "Gravity Condition", unit: "g", min: 0, max: 0.015, tip: "Check for unusual accelerations. Do the planned exercise to protect bone and muscle." },
+  { key: "gravity", category: "Environment", label: "Gravity condition", unit: "g", min: 0, max: 0.015, tip: "Check for unusual accelerations. Do the planned exercise to protect bone and muscle." },
   { key: "workload", category: "Behavioral & Cognitive", label: "Workload", unit: "% of capacity", min: 40, max: 85, tip: "Postpone non-critical tasks and take a rest break." },
-  { key: "schedule", category: "Behavioral & Cognitive", label: "Schedule Adherence", unit: "%", min: 80, max: 100, tip: "Review the schedule and reprioritise overdue tasks." },
+  { key: "schedule", category: "Behavioral & Cognitive", label: "Schedule adherence", unit: "%", min: 80, max: 100, tip: "Review the schedule and reprioritise overdue tasks." },
 ];
 let activeAlerts = new Set();
 

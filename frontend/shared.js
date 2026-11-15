@@ -1,4 +1,4 @@
- // To add a vital: add one line here (and the same key in RANGES in server/server.js)
+// To add a vital: add one line here (and the same key in RANGES in server/server.js)
 const CONFIG = {
   physiology: { title: "Physiology", vitals: [
     { key: "heartRate", label: "Heart Rate", unit: "bpm", min: 50, max: 110 },
@@ -19,30 +19,23 @@ const CONFIG = {
   ]},
 };
 
-// The server records alerts now, so this does nothing (kept so older pages don't break)
+// The server records alerts, so this does nothing (kept so older pages don't break)
 function checkAlerts() {}
 
-// Calls the backend with the login token. Sends you to the login page if the token is invalid.
+// No sign-in: these stay so the pages that call them keep working
+function requireLogin() {}
+function logout() {}
+
 async function api(path, options = {}) {
   const res = await fetch(path, {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: "Bearer " + sessionStorage.getItem("token"),
-      ...(options.headers || {}),
-    },
+    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
   });
-  if (res.status === 401) { logout(); throw new Error("Not logged in"); }
   if (!res.ok) throw new Error("Request failed");
   return res.json();
 }
 
-function requireLogin() {}
-function logout() {
-  sessionStorage.removeItem("loggedIn");
-  sessionStorage.removeItem("token");
-  window.location.href = "login.html";
-}
+// Remove the "Log out" button from every page
 document.addEventListener("DOMContentLoaded", () => {
   const b = document.getElementById("logout");
   if (b) b.remove();
