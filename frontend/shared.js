@@ -37,13 +37,13 @@ async function api(path, options = {}) {
   return res.json();
 }
 
-function requireLogin() {
-  if (sessionStorage.getItem("loggedIn") !== "true" || !sessionStorage.getItem("token")) {
-    window.location.href = "login.html";
-  }
-}
+function requireLogin() {}
 function logout() {
   sessionStorage.removeItem("loggedIn");
   sessionStorage.removeItem("token");
   window.location.href = "login.html";
 }
+document.addEventListener("DOMContentLoaded", () => {
+  const b = document.getElementById("logout");
+  if (b) b.remove();
+});

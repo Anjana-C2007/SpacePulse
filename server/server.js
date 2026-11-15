@@ -33,17 +33,14 @@ addUser(DEMO_USER, DEMO_PASSWORD, "Hari"); // demo account, refreshed on every s
 
 const sessions = new Map(); // token -> username (cleared when the server restarts)
 
-function auth(req, res, next) {
-  const token = (req.headers.authorization || "").replace("Bearer ", "");
-  if (!sessions.has(token)) return res.status(401).json({ error: "Not logged in" });
-  req.user = sessions.get(token);
+ function auth(req, res, next) {
+  req.user = DEMO_USER; // no sign-in: everyone uses the demo crew member
   next();
 }
-
 // ---------- Web server and API ----------
 const app = express();
 app.use(express.json());
-app.use(express.static(path.join(__dirname, "..", "frontend")));
+app.get("/", (req, res) => res.redirect("/dashboard.html")); 
 
 app.post("/api/login", (req, res) => {
   const { username, password } = req.body || {};
